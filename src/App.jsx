@@ -1,8 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+ 
 import { createPortal } from 'react-dom';
+
+// =========================================================================
+//  IMPORTANT: YOU MUST REPLACE THESE PLACEHOLDER VALUES WITH YOUR OWN
+//  FIREBASE PROJECT'S CONFIGURATION.
+//  THIS IS THE CAUSE OF THE "auth/api-key-not-valid" ERROR.
+// =========================================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyBtfHsX9opID8n0O63l3I7Nr4A3wkee7Bg",
+    authDomain: "email-generator-542c0.firebaseapp.com",
+    projectId: "email-generator-542c0",
+    storageBucket: "email-generator-542c0.firebasestorage.app",
+    messagingSenderId: "799950310758",
+    appId: "1:799950310758:web:83d6558298f8830ee54ca7",
+    measurementId: "G-0YKKVV7FVB"
+  };
+
+// Unique application identifier for Firestore paths.
+const appId = firebaseConfig.projectId;
 
 // Tailwind CSS classes for consistent styling
 const containerClass = "bg-white p-8 md:p-12 rounded-2xl shadow-xl space-y-8 max-w-5xl w-full mx-auto transform transition-all duration-300";
@@ -73,6 +94,29 @@ const SettingsModal = ({ isVisible, onClose, companyMission, setCompanyMission, 
   );
 };
 
+// Toast notification component
+const Toast = ({ message, type, onClose }) => {
+  const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+  const icon = type === 'success' ? '✔' : '✖';
+  
+  if (!message) return null;
+
+  return createPortal(
+    <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg text-white font-semibold ${bgColor} z-[100]`}>
+      <div className="flex items-center space-x-2">
+        <span>{icon}</span>
+        <span>{message}</span>
+        <button onClick={onClose} className="ml-2 text-white opacity-75 hover:opacity-100">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // Main application component
 function App() {
   const [incomingEmail, setIncomingEmail] = useState('');
@@ -80,6 +124,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: '' });
 
   const [companyMission, setCompanyMission] = useState('');
   const [senderName, setSenderName] = useState('');
@@ -88,46 +133,42 @@ function App() {
 
   // Firestore & Auth state
   const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
 
-  // Global variables provided by the Canvas environment
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-  const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+  // Function to show a toast message
+  const showToast = (message, type) => {
+    setToast({ message, type });
+    setTimeout(() => setToast({ message: '', type: '' }), 3000);
+  };
 
   // Function to copy text to clipboard
-  const copyToClipboard = () => {
-    const el = document.createElement('textarea');
-    el.value = generatedReply;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-    // You could replace this with a custom toast notification for better UX
-    alert('Reply copied to clipboard!');
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedReply);
+      showToast('Reply copied to clipboard!', 'success');
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      showToast('Failed to copy text.', 'error');
+    }
   };
 
   // 1. Initialize Firebase and handle authentication
   useEffect(() => {
     const initFirebase = async () => {
+      // Add a check to warn the user if they haven't updated the config
+      if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+        console.error("Firebase initialization failed: Please replace the placeholder values in the firebaseConfig object with your actual project details.");
+        setError("Failed to initialize the application. Please update your Firebase configuration.");
+        return;
+      }
       try {
         const app = initializeApp(firebaseConfig);
         const firestore = getFirestore(app);
         const firebaseAuth = getAuth(app);
         setDb(firestore);
-        setAuth(firebaseAuth);
-
-        if (initialAuthToken) {
-          try {
-            await signInWithCustomToken(firebaseAuth, initialAuthToken);
-          } catch (e) {
-            console.error("Custom token sign-in failed, falling back to anonymous:", e);
-            await signInAnonymously(firebaseAuth);
-          }
-        } else {
-          await signInAnonymously(firebaseAuth);
-        }
+        
+        // Sign in anonymously since this is a simple, standalone app
+        await signInAnonymously(firebaseAuth);
 
         const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
           if (user) {
@@ -139,11 +180,11 @@ function App() {
         return () => unsubscribe();
       } catch (e) {
         console.error("Firebase initialization failed:", e);
-        setError("Failed to initialize the application.");
+        setError("Failed to initialize the application. Check your Firebase config.");
       }
     };
     initFirebase();
-  }, [initialAuthToken]);
+  }, []);
 
   // 2. Fetch company data
   useEffect(() => {
@@ -173,7 +214,7 @@ function App() {
   // 3. Function to save company details to Firestore
   const saveCompanyDetails = async () => {
     if (!db || !userId) {
-      setError("Database not ready. Please wait a moment.");
+      showToast("Database not ready. Please wait a moment.", 'error');
       return;
     }
     setIsSaving(true);
@@ -184,11 +225,11 @@ function App() {
         senderName: senderName,
         senderEmail: senderEmail
       });
-      alert('Company details saved successfully!');
+      showToast('Company details saved successfully!', 'success');
       setShowSettings(false); // Close the modal
     } catch (e) {
       console.error("Error saving company details:", e);
-      setError("Failed to save company details. Please try again.");
+      showToast("Failed to save company details. Please try again.", 'error');
     } finally {
       setIsSaving(false);
     }
@@ -229,7 +270,7 @@ function App() {
     try {
       const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
       const payload = { contents: chatHistory };
-      const apiKey = "";
+      const apiKey = ""; // API key is automatically provided in the canvas environment
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
       
       const response = await fetch(apiUrl, {
@@ -281,9 +322,11 @@ function App() {
         {/* Main Application Card */}
         <div className={containerClass}>
           {/* User ID and Welcome Message */}
-          <div className="text-center text-gray-500 mb-6 -mt-4">
-            Signed in as: <span className="font-mono text-xs bg-gray-100 p-1 rounded-md">{userId}</span>
-          </div>
+          {userId && (
+            <div className="text-center text-gray-500 mb-6 -mt-4">
+              Signed in as: <span className="font-mono text-xs bg-gray-100 p-1 rounded-md break-all">{userId}</span>
+            </div>
+          )}
 
           <h2 className="text-3xl font-bold text-gray-800 mb-4">Reply Generator</h2>
           <p className="text-gray-600 mb-6">
@@ -367,6 +410,13 @@ function App() {
         setSenderEmail={setSenderEmail}
         onSave={saveCompanyDetails}
         isSaving={isSaving}
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: '', type: '' })}
       />
     </div>
   );
