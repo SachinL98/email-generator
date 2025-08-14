@@ -2,25 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
- 
 import { createPortal } from 'react-dom';
 
 // =========================================================================
-//  IMPORTANT: YOU MUST REPLACE THESE PLACEHOLDER VALUES WITH YOUR OWN
-//  FIREBASE PROJECT'S CONFIGURATION.
-//  THIS IS THE CAUSE OF THE "auth/api-key-not-valid" ERROR.
+//  Your Firebase project configuration.
+//  This has been updated with the values you provided.
 // =========================================================================
-  const firebaseConfig = {
-    apiKey: "AIzaSyBtfHsX9opID8n0O63l3I7Nr4A3wkee7Bg",
-    authDomain: "email-generator-542c0.firebaseapp.com",
-    projectId: "email-generator-542c0",
-    storageBucket: "email-generator-542c0.firebasestorage.app",
-    messagingSenderId: "799950310758",
-    appId: "1:799950310758:web:83d6558298f8830ee54ca7",
-    measurementId: "G-0YKKVV7FVB"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyBtfHsX9opID8n0O63l3I7Nr4A3wkee7Bg",
+  authDomain: "email-generator-542c0.firebaseapp.com",
+  projectId: "email-generator-542c0",
+  storageBucket: "email-generator-542c0.firebasestorage.app",
+  messagingSenderId: "799950310758",
+  appId: "1:799950310758:web:83d6558298f8830ee54ca7",
+  measurementId: "G-0YKKVV7FVB"
+};
 
 // Unique application identifier for Firestore paths.
 const appId = firebaseConfig.projectId;
@@ -155,12 +151,6 @@ function App() {
   // 1. Initialize Firebase and handle authentication
   useEffect(() => {
     const initFirebase = async () => {
-      // Add a check to warn the user if they haven't updated the config
-      if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-        console.error("Firebase initialization failed: Please replace the placeholder values in the firebaseConfig object with your actual project details.");
-        setError("Failed to initialize the application. Please update your Firebase configuration.");
-        return;
-      }
       try {
         const app = initializeApp(firebaseConfig);
         const firestore = getFirestore(app);
